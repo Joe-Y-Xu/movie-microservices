@@ -33,6 +33,5 @@ out/
 # IDE 临时编辑文件
 *~
 *.swp
-script.py
 vault.txt
 git_diff.txt
