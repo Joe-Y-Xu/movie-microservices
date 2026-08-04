@@ -35,3 +35,4 @@ out/
 *.swp
 script.py
 vault.txt
+git_diff.txt
