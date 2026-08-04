@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+._*
+
+# Eclipse 工作区（不要提交整个 .metadata！）
+.metadata/
+.recommenders/
+
+# Eclipse 项目配置文件（团队多人协作建议忽略）
+.settings/
+*.prefs
+*.launch
+.buildpath
+.cproject
+.classpath
+.project
+.springBeansStsCache
+
+# Maven/Gradle 编译产物
+target/
+build/
+bin/
+out/
+
+# Java 编译文件
+*.class
+
+# 日志与临时文件
+*.log
+*.tmp
+*.bak
+
+# IDE 临时编辑文件
+*~
+*.swp
+script.py
+vault.txt
