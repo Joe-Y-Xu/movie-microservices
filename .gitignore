@@ -35,3 +35,4 @@ out/
 *.swp
 vault.txt
 git_diff.txt
+quick_deploy.sh
