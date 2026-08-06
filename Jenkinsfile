@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'docker.io'
-        DOCKER_USER = 'joe-y-xu'
+	DOCKER_USER = 'ggjoey'
         K8S_NAMESPACE = 'default'
 
         CATALOG_SERVICE  = 'artifact-catalog-service'
