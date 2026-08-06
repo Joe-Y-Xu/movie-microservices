@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'docker.io'
-	DOCKER_USER = 'ggjoey'
+        DOCKER_USER = 'ggjoey'
         K8S_NAMESPACE = 'default'
 
         CATALOG_SERVICE  = 'artifact-catalog-service'
@@ -33,26 +33,34 @@ pipeline {
 
         stage('Build & Push Docker Images') {
             environment {
-                // Prepend docker binary path for all steps inside this stage
                 PATH = "/usr/local/bin:${env.PATH}"
             }
             steps {
                 script {
-                    // Generate immutable unique tag at runtime
                     def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     def IMAGE_TAG = "${env.BUILD_NUMBER}-${gitShort}"
                     echo "✅ Using Image Tag: ${IMAGE_TAG}"
 
-                    // Build once per service
-                    def catalogImg = docker.build("${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG}", "./${CATALOG_SERVICE}")
-                    def movieImg  = docker.build("${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG}", "./${MOVIE_SERVICE}")
-                    def ratingImg = docker.build("${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG}", "./${RATING_SERVICE}")
+                    // Build images with absolute docker path
+                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG} ./${CATALOG_SERVICE}"
+                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG} ./${MOVIE_SERVICE}"
+                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG} ./${RATING_SERVICE}"
 
-                    // Push to Docker Hub
-                    docker.withRegistry('https://docker.io', 'dockerhub-credentials') {
-                        catalogImg.push()
-                        movieImg.push()
-                        ratingImg.push()
+                    // Docker login & push (fixed triple double quotes + escaping)
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'dockerhub-credentials',
+                            usernameVariable: 'DOCKER_USER_NAME',
+                            passwordVariable: 'DOCKER_TOKEN'
+                        )
+                    ]) {
+                        sh """
+                            /usr/local/bin/docker login -u \${DOCKER_USER_NAME} -p \${DOCKER_TOKEN}
+                            /usr/local/bin/docker push \${DOCKER_USER_NAME}/artifact-catalog-service:${IMAGE_TAG}
+                            /usr/local/bin/docker push \${DOCKER_USER_NAME}/movieinfo-service:${IMAGE_TAG}
+                            /usr/local/bin/docker push \${DOCKER_USER_NAME}/ratingdata-service:${IMAGE_TAG}
+                            /usr/local/bin/docker logout
+                        """
                     }
                 }
             }
@@ -102,21 +110,7 @@ pipeline {
         }
 
         success {
-            script {
-                def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                def tagName = "deploy-build-${env.BUILD_NUMBER}-${gitShort}"
-
-                echo "✅ Creating Git tag: $tagName"
-
-                sh """
-                    git config user.name "Jenkins CI"
-                    git config user.email "jenkins@ci.local"
-                    git tag -f ${tagName}
-                    git push -f origin ${tagName}
-                """
-
-                echo "✅ Git Tag pushed successfully: ${tagName}"
-            }
+            echo '✅ Pipeline SUCCESS'
         }
 
         failure {
