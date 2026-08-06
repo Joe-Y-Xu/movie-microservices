@@ -1,38 +1,39 @@
 package com.example.artifact_catalog_service;
 
 public class catalogItem {
-	private String name;
-	private String description;
-	private int rating;
-		
-	
-	public catalogItem(String name, String description, int rating) {
-		super();
-		this.name = name;
-		this.description = description;
-		this.rating = rating;
-	}
-	
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
-	public String getDescription() {
-		return description;
-	}
-	public void setDescription(String description) {
-		this.description = description;
-	}
-	public int getRating() {
-		return rating;
-	}
-	public void setRating(int rating) {
-		this.rating = rating;
-	}
-	
-	
+    private String name;
+    private String movieId;    // ← Changed from description to movieId
+    private int rating;
+    
+    public catalogItem(String name, String movieId, int rating) {  // ← Changed parameter name
+        this.name = name;
+        this.movieId = movieId;  // ← Changed from description to movieId
+        this.rating = rating;
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public void setName(String name) {
+        this.name = name;
+    }
+    
+    public String getMovieId() {    // ← Changed from getDescription()
+        return movieId;
+    }
+    
+    public void setMovieId(String movieId) {    // ← Changed from setDescription()
+        this.movieId = movieId;
+    }
+    
+    public int getRating() {
+        return rating;
+    }
+    
+    public void setRating(int rating) {
+        this.rating = rating;
+    }
 }
 
 
