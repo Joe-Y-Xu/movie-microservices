@@ -89,8 +89,8 @@ pipeline {
                         kubectl version --client
                     """
                     
-                    // Use the kubeconfig credential
-                    withKubeConfig(credentialsId: 'kubecnf') {
+                    // ✅ CORRECTED: Using 'kubeconfig' as the credential ID
+                    withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
                             set -e
                             echo "=== Updating images in Kubernetes ==="
@@ -119,7 +119,8 @@ pipeline {
         stage('Smoke Test') {
             steps {
                 script {
-                    withKubeConfig(credentialsId: 'kubecnf') {
+                    // ✅ CORRECTED: Using 'kubeconfig' as the credential ID
+                    withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
                             set -e
                             echo "=== Running smoke tests ==="
