@@ -32,10 +32,13 @@ pipeline {
         }
 
         stage('Build & Push Docker Images') {
+            environment {
+                // Prepend docker binary path for all steps inside this stage
+                PATH = "/usr/local/bin:${env.PATH}"
+            }
             steps {
                 script {
                     // Generate immutable unique tag at runtime
-		    sh 'export PATH="/usr/local/bin:$PATH"'
                     def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     def IMAGE_TAG = "${env.BUILD_NUMBER}-${gitShort}"
                     echo "✅ Using Image Tag: ${IMAGE_TAG}"
@@ -121,4 +124,3 @@ pipeline {
         }
     }
 }
-
