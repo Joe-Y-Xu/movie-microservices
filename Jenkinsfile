@@ -89,25 +89,29 @@ pipeline {
                         kubectl version --client
                     """
                     
-                    // ✅ CORRECTED: Using 'kubeconfig' as the credential ID
+                    // Use envsubst to replace variables and apply deployments
+                    sh """
+                        export IMAGE_TAG=${env.IMAGE_TAG}
+                        export DOCKER_USER=${DOCKER_USER}
+                        
+                        echo "=== Deploying artifact-catalog ==="
+                        envsubst < ${CATALOG_SERVICE}/deployment.yaml | kubectl apply -f -
+                        
+                        echo "=== Deploying movieinfo ==="
+                        envsubst < ${MOVIE_SERVICE}/deployment.yaml | kubectl apply -f -
+                        
+                        echo "=== Deploying ratingdata ==="
+                        envsubst < ${RATING_SERVICE}/deployment.yaml | kubectl apply -f -
+                    """
+                    
+                    // Wait for rollouts to complete
                     withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
-                            set -e
-                            echo "=== Updating images in Kubernetes ==="
-                            echo "Updating artifact-catalog-deploy with ${DOCKER_USER}/${CATALOG_SERVICE}:${env.IMAGE_TAG}"
-                            kubectl set image deployment/artifact-catalog-deploy artifact-catalog=${DOCKER_USER}/${CATALOG_SERVICE}:${env.IMAGE_TAG} -n ${K8S_NAMESPACE}
-                            
-                            echo "Updating movieinfo-deploy with ${DOCKER_USER}/${MOVIE_SERVICE}:${env.IMAGE_TAG}"
-                            kubectl set image deployment/movieinfo-deploy movieinfo=${DOCKER_USER}/${MOVIE_SERVICE}:${env.IMAGE_TAG} -n ${K8S_NAMESPACE}
-                            
-                            echo "Updating ratingdata-deploy with ${DOCKER_USER}/${RATING_SERVICE}:${env.IMAGE_TAG}"
-                            kubectl set image deployment/ratingdata-deploy ratingdata=${DOCKER_USER}/${RATING_SERVICE}:${env.IMAGE_TAG} -n ${K8S_NAMESPACE}
-
-                            echo "=== Waiting for rollout to complete ==="
+                            echo "=== Waiting for deployments to complete ==="
                             kubectl rollout status deployment/artifact-catalog-deploy -n ${K8S_NAMESPACE} --timeout=300s
                             kubectl rollout status deployment/movieinfo-deploy -n ${K8S_NAMESPACE} --timeout=300s
                             kubectl rollout status deployment/ratingdata-deploy -n ${K8S_NAMESPACE} --timeout=300s
-
+                            
                             echo "=== Current pods in ${K8S_NAMESPACE} namespace ==="
                             kubectl get pods -n ${K8S_NAMESPACE}
                         """
@@ -119,14 +123,13 @@ pipeline {
         stage('Smoke Test') {
             steps {
                 script {
-                    // ✅ CORRECTED: Using 'kubeconfig' as the credential ID
                     withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
                             set -e
                             echo "=== Running smoke tests ==="
                             
                             echo "Testing catalog service..."
-                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog -o jsonpath='{.items[0].metadata.name}')
+                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service -o jsonpath='{.items[0].metadata.name}')
                             if [ -z "\$CATALOG_POD" ]; then
                                 echo "❌ No catalog pod found!"
                                 exit 1
@@ -138,7 +141,7 @@ pipeline {
                             }
                             
                             echo "Testing movie service..."
-                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo -o jsonpath='{.items[0].metadata.name}')
+                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service -o jsonpath='{.items[0].metadata.name}')
                             if [ -z "\$MOVIE_POD" ]; then
                                 echo "❌ No movie pod found!"
                                 exit 1
@@ -150,7 +153,7 @@ pipeline {
                             }
                             
                             echo "Testing rating service..."
-                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata -o jsonpath='{.items[0].metadata.name}')
+                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service -o jsonpath='{.items[0].metadata.name}')
                             if [ -z "\$RATING_POD" ]; then
                                 echo "❌ No rating pod found!"
                                 exit 1

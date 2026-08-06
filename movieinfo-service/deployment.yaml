@@ -2,6 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: movieinfo-deploy
+  namespace: default
+  labels:
+    app: movieinfo-service
+    version: ${IMAGE_TAG}
 spec:
   replicas: 2
   selector:
@@ -11,21 +15,24 @@ spec:
     metadata:
       labels:
         app: movieinfo-service
+        version: ${IMAGE_TAG}
     spec:
       containers:
       - name: movieinfo
-        image: movieinfo-service:v1
+        image: ${DOCKER_USER}/movieinfo-service:${IMAGE_TAG}
         ports:
-        - containerPort: 8081
+        - containerPort: 8080
         livenessProbe:
-          httpGet:
-            path: /actuator/health/liveness
-            port: 8081
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8080
           initialDelaySeconds: 20
           periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /actuator/health/readiness
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 10

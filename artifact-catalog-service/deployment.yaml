@@ -2,6 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: artifact-catalog-deploy
+  namespace: default
+  labels:
+    app: artifact-catalog-service
+    version: ${IMAGE_TAG}
 spec:
   replicas: 2
   selector:
@@ -11,21 +15,24 @@ spec:
     metadata:
       labels:
         app: artifact-catalog-service
+        version: ${IMAGE_TAG}
     spec:
       containers:
       - name: artifact-catalog
-        image: artifact-catalog-service:v1
+        image: ${DOCKER_USER}/artifact-catalog-service:${IMAGE_TAG}
         ports:
         - containerPort: 8080
         livenessProbe:
-          httpGet:
-            path: /actuator/health/liveness
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        readinessProbe:
+          tcpSocket:
             port: 8080
           initialDelaySeconds: 20
           periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /actuator/health/readiness
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 10

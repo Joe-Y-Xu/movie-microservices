@@ -2,6 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ratingdata-deploy
+  namespace: default
+  labels:
+    app: ratingdata-service
+    version: ${IMAGE_TAG}
 spec:
   replicas: 2
   selector:
@@ -11,21 +15,24 @@ spec:
     metadata:
       labels:
         app: ratingdata-service
+        version: ${IMAGE_TAG}
     spec:
       containers:
       - name: ratingdata
-        image: ratingdata-service:v1
+        image: ${DOCKER_USER}/ratingdata-service:${IMAGE_TAG}
         ports:
-        - containerPort: 8082
+        - containerPort: 8080
         livenessProbe:
-          httpGet:
-            path: /actuator/health/liveness
-            port: 8082
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8080
           initialDelaySeconds: 20
           periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /actuator/health/readiness
-            port: 8082
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 10
