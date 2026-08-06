@@ -35,6 +35,7 @@ pipeline {
             steps {
                 script {
                     // Generate immutable unique tag at runtime
+		    sh 'export PATH="/usr/local/bin:$PATH"'
                     def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     def IMAGE_TAG = "${env.BUILD_NUMBER}-${gitShort}"
                     echo "✅ Using Image Tag: ${IMAGE_TAG}"
