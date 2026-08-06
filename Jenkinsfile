@@ -129,9 +129,9 @@ pipeline {
                             echo "=== Running smoke tests ==="
                             
                             echo "Testing catalog service..."
-                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service -o jsonpath='{.items[0].metadata.name}')
+                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
                             if [ -z "\$CATALOG_POD" ]; then
-                                echo "❌ No catalog pod found!"
+                                echo "❌ No running catalog pod found!"
                                 exit 1
                             fi
                             echo "Found catalog pod: \$CATALOG_POD"
@@ -141,9 +141,9 @@ pipeline {
                             }
                             
                             echo "Testing movie service..."
-                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service -o jsonpath='{.items[0].metadata.name}')
+                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
                             if [ -z "\$MOVIE_POD" ]; then
-                                echo "❌ No movie pod found!"
+                                echo "❌ No running movie pod found!"
                                 exit 1
                             fi
                             echo "Found movie pod: \$MOVIE_POD"
@@ -153,9 +153,9 @@ pipeline {
                             }
                             
                             echo "Testing rating service..."
-                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service -o jsonpath='{.items[0].metadata.name}')
+                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
                             if [ -z "\$RATING_POD" ]; then
-                                echo "❌ No rating pod found!"
+                                echo "❌ No running rating pod found!"
                                 exit 1
                             fi
                             echo "Found rating pod: \$RATING_POD"
