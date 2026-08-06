@@ -2,7 +2,6 @@ pipeline {
     agent any
     tools {
         jdk 'JDK17'
-        maven 'Maven-3.9'
     }
     stages {
         stage('Checkout Source') {
@@ -24,7 +23,14 @@ pipeline {
         }
     }
     post {
-        success { echo '✅ Build completed, all jars archived' }
-        failure { echo '❌ Build failed, check console output' }
+        always {
+            echo 'Build run finished'
+        }
+        success {
+            echo '✅ Build completed, all jars archived'
+        }
+        failure {
+            echo '❌ Build failed, check console output'
+        }
     }
 }
