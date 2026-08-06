@@ -14,8 +14,7 @@ pipeline {
         CATALOG_SERVICE = 'artifact-catalog-service'
         MOVIE_SERVICE   = 'movieinfo-service'
         RATING_SERVICE  = 'ratingdata-service'
-
-        IMAGE_TAG = '' // 占位，后续动态赋值
+        // ===== 删除 IMAGE_TAG = '' 这一行 =====
     }
 
     stages {
@@ -24,7 +23,7 @@ pipeline {
                 script {
                     def GIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${GIT_SHORT}"
-                    echo "✅ Target Image Tag: ${IMAGE_TAG}"
+                    echo "✅ Target Image Tag: ${env.IMAGE_TAG}"
                 }
             }
         }
@@ -49,12 +48,11 @@ pipeline {
             }
             steps {
                 script {
-                    // Build images
-                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG} ./${CATALOG_SERVICE}"
-                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG} ./${MOVIE_SERVICE}"
-                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG} ./${RATING_SERVICE}"
+                    // 所有地方统一使用 env.IMAGE_TAG
+                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${CATALOG_SERVICE}:${env.IMAGE_TAG} ./${CATALOG_SERVICE}"
+                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${MOVIE_SERVICE}:${env.IMAGE_TAG} ./${MOVIE_SERVICE}"
+                    sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${RATING_SERVICE}:${env.IMAGE_TAG} ./${RATING_SERVICE}"
 
-                    // Login & push
                     withCredentials([
                         usernamePassword(
                             credentialsId: 'dockerhub-credentials',
@@ -65,9 +63,9 @@ pipeline {
                         sh """
                             set -e
                             /usr/local/bin/docker login -u '${DOCKER_USER_NAME}' -p '${DOCKER_TOKEN}'
-                            /usr/local/bin/docker push ${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG}
-                            /usr/local/bin/docker push ${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG}
-                            /usr/local/bin/docker push ${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG}
+                            /usr/local/bin/docker push ${DOCKER_USER}/${CATALOG_SERVICE}:${env.IMAGE_TAG}
+                            /usr/local/bin/docker push ${DOCKER_USER}/${MOVIE_SERVICE}:${env.IMAGE_TAG}
+                            /usr/local/bin/docker push ${DOCKER_USER}/${RATING_SERVICE}:${env.IMAGE_TAG}
                         """
                     }
                 }
@@ -85,9 +83,9 @@ pipeline {
                     withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
                             set -e
-                            kubectl set image deployment/artifact-catalog-deploy artifact-catalog=${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
-                            kubectl set image deployment/movieinfo-deploy movieinfo=${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
-                            kubectl set image deployment/ratingdata-deploy ratingdata=${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
+                            kubectl set image deployment/artifact-catalog-deploy artifact-catalog=${DOCKER_USER}/${CATALOG_SERVICE}:${env.IMAGE_TAG} -n ${K8S_NAMESPACE}
+                            kubectl set image deployment/movieinfo-deploy movieinfo=${DOCKER_USER}/${MOVIE_SERVICE}:${env.IMAGE_TAG} -n ${K8S_NAMESPACE}
+                            kubectl set image deployment/ratingdata-deploy ratingdata=${DOCKER_USER}/${RATING_SERVICE}:${env.IMAGE_TAG} -n ${K8S_NAMESPACE}
 
                             kubectl rollout status deployment/artifact-catalog-deploy -n ${K8S_NAMESPACE} --timeout=300s
                             kubectl rollout status deployment/movieinfo-deploy -n ${K8S_NAMESPACE} --timeout=300s
