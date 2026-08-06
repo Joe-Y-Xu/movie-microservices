@@ -8,12 +8,16 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'docker.io'
-        DOCKER_USER = 'ggjoey'
-        K8S_NAMESPACE = 'default'
+        DOCKER_USER     = 'ggjoey'
+        K8S_NAMESPACE   = 'default'
 
-        CATALOG_SERVICE  = 'artifact-catalog-service'
+        CATALOG_SERVICE = 'artifact-catalog-service'
         MOVIE_SERVICE   = 'movieinfo-service'
         RATING_SERVICE  = 'ratingdata-service'
+
+        // Compute image tag once at pipeline start
+        GIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        IMAGE_TAG = "${env.BUILD_NUMBER}-${GIT_SHORT}"
     }
 
     stages {
@@ -37,16 +41,14 @@ pipeline {
             }
             steps {
                 script {
-                    def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    def IMAGE_TAG = "${env.BUILD_NUMBER}-${gitShort}"
-                    echo "✅ Using Image Tag: ${IMAGE_TAG}"
+                    echo "✅ Target Image Tag: ${IMAGE_TAG}"
 
-                    // Build images with absolute docker path
+                    // Build images
                     sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG} ./${CATALOG_SERVICE}"
                     sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG} ./${MOVIE_SERVICE}"
                     sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG} ./${RATING_SERVICE}"
 
-                    // Docker login & push (fixed triple double quotes + escaping)
+                    // Login & push, ensure logout runs even if push fails
                     withCredentials([
                         usernamePassword(
                             credentialsId: 'dockerhub-credentials',
@@ -55,13 +57,18 @@ pipeline {
                         )
                     ]) {
                         sh """
-                            /usr/local/bin/docker login -u \${DOCKER_USER_NAME} -p \${DOCKER_TOKEN}
-                            /usr/local/bin/docker push \${DOCKER_USER_NAME}/artifact-catalog-service:${IMAGE_TAG}
-                            /usr/local/bin/docker push \${DOCKER_USER_NAME}/movieinfo-service:${IMAGE_TAG}
-                            /usr/local/bin/docker push \${DOCKER_USER_NAME}/ratingdata-service:${IMAGE_TAG}
-                            /usr/local/bin/docker logout
+                            set -e
+                            /usr/local/bin/docker login -u '${DOCKER_USER_NAME}' -p '${DOCKER_TOKEN}'
+                            /usr/local/bin/docker push ${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG}
+                            /usr/local/bin/docker push ${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG}
+                            /usr/local/bin/docker push ${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG}
                         """
                     }
+                }
+            }
+            post {
+                always {
+                    sh "/usr/local/bin/docker logout || true"
                 }
             }
         }
@@ -69,18 +76,16 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    def IMAGE_TAG = "${env.BUILD_NUMBER}-${gitShort}"
-
-                    withKubeConfig([credentialsId: 'kubeconfig']) {
+                    withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
+                            set -e
                             kubectl set image deployment/artifact-catalog-deploy artifact-catalog=${DOCKER_USER}/${CATALOG_SERVICE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
                             kubectl set image deployment/movieinfo-deploy movieinfo=${DOCKER_USER}/${MOVIE_SERVICE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
                             kubectl set image deployment/ratingdata-deploy ratingdata=${DOCKER_USER}/${RATING_SERVICE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
 
-                            kubectl rollout status deployment/artifact-catalog-deploy -n ${K8S_NAMESPACE}
-                            kubectl rollout status deployment/movieinfo-deploy -n ${K8S_NAMESPACE}
-                            kubectl rollout status deployment/ratingdata-deploy -n ${K8S_NAMESPACE}
+                            kubectl rollout status deployment/artifact-catalog-deploy -n ${K8S_NAMESPACE} --timeout=300s
+                            kubectl rollout status deployment/movieinfo-deploy -n ${K8S_NAMESPACE} --timeout=300s
+                            kubectl rollout status deployment/ratingdata-deploy -n ${K8S_NAMESPACE} --timeout=300s
 
                             kubectl get pods -n ${K8S_NAMESPACE}
                         """
@@ -92,11 +97,13 @@ pipeline {
         stage('Smoke Test') {
             steps {
                 script {
-                    withKubeConfig([credentialsId: 'kubeconfig']) {
-                        sh '''
-                            CATALOG_POD=$(kubectl get pods -n default -l app=artifact-catalog -o jsonpath='{.items[0].metadata.name}')
-                            kubectl exec $CATALOG_POD -- curl -s http://localhost:8080/catalog/1
-                        '''
+                    withKubeConfig(credentialsId: 'kubeconfig') {
+                        sh """
+                            set -e
+                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog -o jsonpath='{.items[0].metadata.name}')
+                            echo "Testing catalog pod: \$CATALOG_POD"
+                            kubectl exec "\$CATALOG_POD" -- curl -s http://localhost:8080/catalog/1
+                        """
                     }
                 }
             }
@@ -108,11 +115,9 @@ pipeline {
             echo 'Pipeline finished'
             cleanWs()
         }
-
         success {
             echo '✅ Pipeline SUCCESS'
         }
-
         failure {
             echo '❌ Pipeline failed'
         }
