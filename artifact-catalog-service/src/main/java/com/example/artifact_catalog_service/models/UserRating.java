@@ -1,4 +1,4 @@
-package io.javabrains.ratingsdataservice.model;
+package com.example.artifact_catalog_service.models;
 
 import java.util.Arrays;
 import java.util.List;

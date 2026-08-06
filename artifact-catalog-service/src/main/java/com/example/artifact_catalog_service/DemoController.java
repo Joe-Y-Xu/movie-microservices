@@ -8,8 +8,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import io.javabrains.movieinfoservice.models.Movie;
-import io.javabrains.ratingsdataservice.model.Rating;
+import com.example.artifact_catalog_service.models.Movie;
+import com.example.artifact_catalog_service.models.Rating;
+
 import reactor.core.publisher.Flux;
 
 @RestController
@@ -19,8 +20,8 @@ public class DemoController {
     private final WebClient webClient;
     
     public DemoController(WebClient.Builder webBuilder) {
-        this.webClient = webBuilder.baseUrl("http://movieinfo-service:8081").build();
-    }
+    	this.webClient = webBuilder.baseUrl("http://movieinfo-service.default.svc.cluster.local:8081").build();
+    	}
     
     @RequestMapping("/{userID}")
     public Flux<catalogItem> getCatalog(@PathVariable("userID") int userID) {
