@@ -97,7 +97,6 @@ pipeline {
             cleanWs()
         }
 
-        # AUTO GIT TAG ON SUCCESS (your requirement)
         success {
             script {
                 def gitShort = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
