@@ -4,6 +4,7 @@ pipeline {
     tools {
         jdk 'JDK17'
         maven 'Maven3'
+        kubernetescli 'kubectl-latest'
     }
 
     environment {
@@ -14,7 +15,6 @@ pipeline {
         CATALOG_SERVICE = 'artifact-catalog-service'
         MOVIE_SERVICE   = 'movieinfo-service'
         RATING_SERVICE  = 'ratingdata-service'
-        // ===== 删除 IMAGE_TAG = '' 这一行 =====
     }
 
     stages {
@@ -48,7 +48,6 @@ pipeline {
             }
             steps {
                 script {
-                    // 所有地方统一使用 env.IMAGE_TAG
                     sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${CATALOG_SERVICE}:${env.IMAGE_TAG} ./${CATALOG_SERVICE}"
                     sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${MOVIE_SERVICE}:${env.IMAGE_TAG} ./${MOVIE_SERVICE}"
                     sh "/usr/local/bin/docker build -t ${DOCKER_USER}/${RATING_SERVICE}:${env.IMAGE_TAG} ./${RATING_SERVICE}"
@@ -80,6 +79,12 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
+                    // 调试：打印PATH确认kubectl是否加载成功，运行正常后可删除这段
+                    sh """
+                        echo "==== Current PATH ===="
+                        echo \$PATH
+                        which kubectl || echo "!!! kubectl NOT FOUND in PATH !!!"
+                    """
                     withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
                             set -e
