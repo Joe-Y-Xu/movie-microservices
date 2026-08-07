@@ -119,80 +119,82 @@ pipeline {
                 }
             }
         }
-
-        stage('Smoke Test') {
-            steps {
-                script {
-                    withKubeConfig(credentialsId: 'kubeconfig') {
-                        sh """
-                            set -e
-                            MAX_RETRY=3
-                            SLEEP_SEC=3
-                            
-                            echo "=== Running smoke tests ==="
-                            
-                            echo "Testing catalog service..."
-                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
-                            if [ -z "\$CATALOG_POD" ]; then
-                                echo "❌ No ready catalog pod found!"
-                                exit 1
-                            fi
-                            echo "Found catalog pod: \$CATALOG_POD"
-                            ATTEMPT=1
-                            until kubectl exec "\$CATALOG_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/catalog/1; do
-                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
-                                    echo "❌ Catalog service test failed after \$MAX_RETRY attempts!"
-                                    exit 1
-                                fi
-                                echo "⚠️ Catalog test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
-                                ATTEMPT=\$((ATTEMPT+1))
-                                sleep \$SLEEP_SEC
-                            done
-                            
-                            echo "Testing movie service..."
-                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
-                            if [ -z "\$MOVIE_POD" ]; then
-                                echo "❌ No ready movie pod found!"
-                                exit 1
-                            fi
-                            echo "Found movie pod: \$MOVIE_POD"
-                            ATTEMPT=1
-                            until kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8081/movies/1; do
-                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
-                                    echo "❌ Movie service test failed after \$MAX_RETRY attempts!"
-                                    exit 1
-                                fi
-                                echo "⚠️ Movie test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
-                                ATTEMPT=\$((ATTEMPT+1))
-                                sleep \$SLEEP_SEC
-                            done
-                            
-                            echo "Testing rating service..."
-                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
-                            if [ -z "\$RATING_POD" ]; then
-                                echo "❌ No ready rating pod found!"
-                                exit 1
-                            fi
-                            echo "Found rating pod: \$RATING_POD"
-                            ATTEMPT=1
-                            until kubectl exec "\$RATING_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8082/movies/1; do
-                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
-                                    echo "❌ Rating service test failed after \$MAX_RETRY attempts!"
-                                    exit 1
-                                fi
-                                echo "⚠️ Rating test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
-                                ATTEMPT=\$((ATTEMPT+1))
-                                sleep \$SLEEP_SEC
-                            done
-                            
-                            echo "✅ All smoke tests passed!"
-                        """
-                    }
-                }
+stage('Smoke Test') {
+    steps {
+        script {
+            withKubeConfig(credentialsId: 'kubeconfig') {
+                sh """
+                    set -e
+                    MAX_RETRY=3
+                    SLEEP_SEC=3
+                    
+                    echo "=== Running smoke tests ==="
+                    
+                    echo "Testing catalog service..."
+                    ATTEMPT=1
+                    until [
+                        CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
+                        if [ -z "\$CATALOG_POD" ]; then
+                            echo "⚠️ No ready catalog pod found!"
+                            exit 1
+                        fi
+                        echo "Attempt \$ATTEMPT using pod: \$CATALOG_POD"
+                        kubectl exec "\$CATALOG_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/catalog/1
+                    ]; do
+                        if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
+                            echo "❌ Catalog service test failed after \$MAX_RETRY attempts!"
+                            exit 1
+                        fi
+                        echo "⚠️ Catalog test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
+                        ATTEMPT=\$((ATTEMPT+1))
+                        sleep \$SLEEP_SEC
+                    done
+                    
+                    echo "Testing movie service..."
+                    ATTEMPT=1
+                    until [
+                        MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
+                        if [ -z "\$MOVIE_POD" ]; then
+                            echo "⚠️ No ready movie pod found!"
+                            exit 1
+                        fi
+                        echo "Attempt \$ATTEMPT using pod: \$MOVIE_POD"
+                        kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8081/movies/1
+                    ]; do
+                        if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
+                            echo "❌ Movie service test failed after \$MAX_RETRY attempts!"
+                            exit 1
+                        fi
+                        echo "⚠️ Movie test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
+                        ATTEMPT=\$((ATTEMPT+1))
+                        sleep \$SLEEP_SEC
+                    done
+                    
+                    echo "Testing rating service..."
+                    ATTEMPT=1
+                    until [
+                        RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
+                        if [ -z "\$RATING_POD" ]; then
+                            echo "⚠️ No ready rating pod found!"
+                            exit 1
+                        fi
+                        echo "Attempt \$ATTEMPT using pod: \$RATING_POD"
+                        kubectl exec "\$RATING_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8082/movies/1
+                    ]; do
+                        if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
+                            echo "❌ Rating service test failed after \$MAX_RETRY attempts!"
+                            exit 1
+                        fi
+                        echo "⚠️ Rating test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
+                        ATTEMPT=\$((ATTEMPT+1))
+                        sleep \$SLEEP_SEC
+                    done
+                    
+                    echo "✅ All smoke tests passed!"
+                """
             }
         }
     }
-
     post {
         always {
             echo 'Pipeline finished'

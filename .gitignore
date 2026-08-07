@@ -40,3 +40,10 @@ git_diff.txt
 target/
 *.log
 quick_deploy.sh
+check_current_artifact-catalog_pods.sh
+check_pod_artifact-catalog-services_events.sh
+get_pod_artifact-catalog-services_logs.sh
+restart_jenkins_and_show_logs.sh
+
+*.py
+*.sh

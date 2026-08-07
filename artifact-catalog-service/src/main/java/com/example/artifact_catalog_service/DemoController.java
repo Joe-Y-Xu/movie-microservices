@@ -20,8 +20,7 @@ public class DemoController {
     private final WebClient webClient;
     
     public DemoController(WebClient.Builder webBuilder) {
-    	this.webClient = webBuilder.baseUrl("http://movieinfo-service.default.svc.cluster.local:8081").build();
-    	}
+    	this.webClient = webBuilder.baseUrl("http://movieinfo-service.default.svc.cluster.local:8081").build();    	}
     
     @RequestMapping("/{userID}")
     public Flux<catalogItem> getCatalog(@PathVariable("userID") int userID) {
