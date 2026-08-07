@@ -157,7 +157,7 @@ pipeline {
                             fi
                             echo "Found movie pod: \$MOVIE_POD"
                             ATTEMPT=1
-                            until kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/movies/1; do
+                            until kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8081/movies/1; do
                                 if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
                                     echo "❌ Movie service test failed after \$MAX_RETRY attempts!"
                                     exit 1
