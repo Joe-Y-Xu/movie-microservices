@@ -132,9 +132,9 @@ pipeline {
                             echo "=== Running smoke tests ==="
                             
                             echo "Testing catalog service..."
-                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+                            CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
                             if [ -z "\$CATALOG_POD" ]; then
-                                echo "❌ No running catalog pod found!"
+                                echo "❌ No ready catalog pod found!"
                                 exit 1
                             fi
                             echo "Found catalog pod: \$CATALOG_POD"
@@ -150,9 +150,9 @@ pipeline {
                             done
                             
                             echo "Testing movie service..."
-                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+                            MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
                             if [ -z "\$MOVIE_POD" ]; then
-                                echo "❌ No running movie pod found!"
+                                echo "❌ No ready movie pod found!"
                                 exit 1
                             fi
                             echo "Found movie pod: \$MOVIE_POD"
@@ -168,9 +168,9 @@ pipeline {
                             done
                             
                             echo "Testing rating service..."
-                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+                            RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
                             if [ -z "\$RATING_POD" ]; then
-                                echo "❌ No running rating pod found!"
+                                echo "❌ No ready rating pod found!"
                                 exit 1
                             fi
                             echo "Found rating pod: \$RATING_POD"
@@ -191,18 +191,3 @@ pipeline {
                 }
             }
         }
-    }
-
-    post {
-        always {
-            echo 'Pipeline finished'
-            cleanWs()
-        }
-        success {
-            echo '✅ Pipeline SUCCESS'
-        }
-        failure {
-            echo '❌ Pipeline failed'
-        }
-    }
-}
