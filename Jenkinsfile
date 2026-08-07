@@ -191,3 +191,18 @@ pipeline {
                 }
             }
         }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished'
+            cleanWs()
+        }
+        success {
+            echo '✅ Pipeline SUCCESS'
+        }
+        failure {
+            echo '❌ Pipeline FAILED'
+        }
+    }
+}
