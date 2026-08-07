@@ -2,10 +2,12 @@ package com.example.ratingdata_service;
 
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;  
 
 import com.example.ratingdata_service.model.UserRating;
 import com.example.ratingdata_service.model.Rating;
 
+@RestController 
 public class RatingDataResources {
 
     @RequestMapping("/movies/{movieId}")
@@ -18,7 +20,5 @@ public class RatingDataResources {
         UserRating userRating = new UserRating();
         userRating.initData(userId);
         return userRating;
-
     }
-	
 }

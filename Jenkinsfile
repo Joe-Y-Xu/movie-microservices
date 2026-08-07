@@ -81,31 +81,31 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Debug: Verify kubectl is available
-                    sh """
-                        echo "==== Current PATH ===="
-                        echo \$PATH
-                        which kubectl || echo "!!! kubectl NOT FOUND in PATH !!!"
-                        kubectl version --client
-                    """
-                    
-                    // Use envsubst to replace variables and apply deployments
-                    sh """
-                        export IMAGE_TAG=${env.IMAGE_TAG}
-                        export DOCKER_USER=${DOCKER_USER}
-                        
-                        echo "=== Deploying artifact-catalog ==="
-                        envsubst < ${CATALOG_SERVICE}/deployment.yaml | kubectl apply -f -
-                        
-                        echo "=== Deploying movieinfo ==="
-                        envsubst < ${MOVIE_SERVICE}/deployment.yaml | kubectl apply -f -
-                        
-                        echo "=== Deploying ratingdata ==="
-                        envsubst < ${RATING_SERVICE}/deployment.yaml | kubectl apply -f -
-                    """
-                    
-                    // Wait for rollouts to complete
                     withKubeConfig(credentialsId: 'kubeconfig') {
+                        // Debug: Verify kubectl is available
+                        sh """
+                            echo "==== Current PATH ===="
+                            echo \$PATH
+                            which kubectl || echo "!!! kubectl NOT FOUND in PATH !!!"
+                            kubectl version --client
+                        """
+                        
+                        // Use envsubst to replace variables and apply deployments
+                        sh """
+                            export IMAGE_TAG=${env.IMAGE_TAG}
+                            export DOCKER_USER=${DOCKER_USER}
+                            
+                            echo "=== Deploying artifact-catalog ==="
+                            envsubst < ${CATALOG_SERVICE}/deployment.yaml | kubectl apply -f -
+                            
+                            echo "=== Deploying movieinfo ==="
+                            envsubst < ${MOVIE_SERVICE}/deployment.yaml | kubectl apply -f -
+                            
+                            echo "=== Deploying ratingdata ==="
+                            envsubst < ${RATING_SERVICE}/deployment.yaml | kubectl apply -f -
+                        """
+                        
+                        // Wait for rollouts to complete
                         sh """
                             echo "=== Waiting for deployments to complete ==="
                             kubectl rollout status deployment/artifact-catalog-deploy -n ${K8S_NAMESPACE} --timeout=300s
@@ -126,6 +126,9 @@ pipeline {
                     withKubeConfig(credentialsId: 'kubeconfig') {
                         sh """
                             set -e
+                            MAX_RETRY=3
+                            SLEEP_SEC=3
+                            
                             echo "=== Running smoke tests ==="
                             
                             echo "Testing catalog service..."
@@ -135,10 +138,16 @@ pipeline {
                                 exit 1
                             fi
                             echo "Found catalog pod: \$CATALOG_POD"
-                            kubectl exec "\$CATALOG_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/catalog/1 || {
-                                echo "❌ Catalog service test failed!"
-                                exit 1
-                            }
+                            ATTEMPT=1
+                            until kubectl exec "\$CATALOG_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/catalog/1; do
+                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
+                                    echo "❌ Catalog service test failed after \$MAX_RETRY attempts!"
+                                    exit 1
+                                fi
+                                echo "⚠️ Catalog test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
+                                ATTEMPT=\$((ATTEMPT+1))
+                                sleep \$SLEEP_SEC
+                            done
                             
                             echo "Testing movie service..."
                             MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
@@ -147,10 +156,16 @@ pipeline {
                                 exit 1
                             fi
                             echo "Found movie pod: \$MOVIE_POD"
-                            kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/movies || {
-                                echo "❌ Movie service test failed!"
-                                exit 1
-                            }
+                            ATTEMPT=1
+                            until kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/movies; do
+                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
+                                    echo "❌ Movie service test failed after \$MAX_RETRY attempts!"
+                                    exit 1
+                                fi
+                                echo "⚠️ Movie test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
+                                ATTEMPT=\$((ATTEMPT+1))
+                                sleep \$SLEEP_SEC
+                            done
                             
                             echo "Testing rating service..."
                             RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[0].metadata.name}')
@@ -159,10 +174,16 @@ pipeline {
                                 exit 1
                             fi
                             echo "Found rating pod: \$RATING_POD"
-                            kubectl exec "\$RATING_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/ratings || {
-                                echo "❌ Rating service test failed!"
-                                exit 1
-                            }
+                            ATTEMPT=1
+                            until kubectl exec "\$RATING_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8082/movies/1; do
+                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
+                                    echo "❌ Rating service test failed after \$MAX_RETRY attempts!"
+                                    exit 1
+                                fi
+                                echo "⚠️ Rating test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
+                                ATTEMPT=\$((ATTEMPT+1))
+                                sleep \$SLEEP_SEC
+                            done
                             
                             echo "✅ All smoke tests passed!"
                         """
