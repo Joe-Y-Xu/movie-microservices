@@ -133,63 +133,72 @@ pipeline {
                             
                             echo "Testing catalog service..."
                             ATTEMPT=1
-                            until [
+                            while [ \$ATTEMPT -le \$MAX_RETRY ]; do
                                 CATALOG_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=artifact-catalog-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
                                 if [ -z "\$CATALOG_POD" ]; then
                                     echo "⚠️ No ready catalog pod found!"
-                                    exit 1
+                                    ATTEMPT=\$((ATTEMPT+1))
+                                    sleep \$SLEEP_SEC
+                                    continue
                                 fi
                                 echo "Attempt \$ATTEMPT using pod: \$CATALOG_POD"
-                                kubectl exec "\$CATALOG_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/catalog/1
-                            ]; do
-                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
-                                    echo "❌ Catalog service test failed after \$MAX_RETRY attempts!"
-                                    exit 1
+                                if kubectl exec "\$CATALOG_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8080/catalog/1; then
+                                    break
                                 fi
                                 echo "⚠️ Catalog test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
                                 ATTEMPT=\$((ATTEMPT+1))
                                 sleep \$SLEEP_SEC
                             done
+                            if [ \$ATTEMPT -gt \$MAX_RETRY ]; then
+                                echo "❌ Catalog service test failed after \$MAX_RETRY attempts!"
+                                exit 1
+                            fi
                             
                             echo "Testing movie service..."
                             ATTEMPT=1
-                            until [
+                            while [ \$ATTEMPT -le \$MAX_RETRY ]; do
                                 MOVIE_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=movieinfo-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
                                 if [ -z "\$MOVIE_POD" ]; then
                                     echo "⚠️ No ready movie pod found!"
-                                    exit 1
+                                    ATTEMPT=\$((ATTEMPT+1))
+                                    sleep \$SLEEP_SEC
+                                    continue
                                 fi
                                 echo "Attempt \$ATTEMPT using pod: \$MOVIE_POD"
-                                kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8081/movies/1
-                            ]; do
-                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
-                                    echo "❌ Movie service test failed after \$MAX_RETRY attempts!"
-                                    exit 1
+                                if kubectl exec "\$MOVIE_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8081/movies/1; then
+                                    break
                                 fi
                                 echo "⚠️ Movie test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
                                 ATTEMPT=\$((ATTEMPT+1))
                                 sleep \$SLEEP_SEC
                             done
+                            if [ \$ATTEMPT -gt \$MAX_RETRY ]; then
+                                echo "❌ Movie service test failed after \$MAX_RETRY attempts!"
+                                exit 1
+                            fi
                             
                             echo "Testing rating service..."
                             ATTEMPT=1
-                            until [
+                            while [ \$ATTEMPT -le \$MAX_RETRY ]; do
                                 RATING_POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=ratingdata-service --field-selector status.phase=Running -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==true)].metadata.name}' | awk '{print \$1}')
                                 if [ -z "\$RATING_POD" ]; then
                                     echo "⚠️ No ready rating pod found!"
-                                    exit 1
+                                    ATTEMPT=\$((ATTEMPT+1))
+                                    sleep \$SLEEP_SEC
+                                    continue
                                 fi
                                 echo "Attempt \$ATTEMPT using pod: \$RATING_POD"
-                                kubectl exec "\$RATING_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8082/movies/1
-                            ]; do
-                                if [ \$ATTEMPT -ge \$MAX_RETRY ]; then
-                                    echo "❌ Rating service test failed after \$MAX_RETRY attempts!"
-                                    exit 1
+                                if kubectl exec "\$RATING_POD" -n ${K8S_NAMESPACE} -- curl -s --fail http://localhost:8082/movies/1; then
+                                    break
                                 fi
                                 echo "⚠️ Rating test attempt \$ATTEMPT failed, retry after \$SLEEP_SEC seconds..."
                                 ATTEMPT=\$((ATTEMPT+1))
                                 sleep \$SLEEP_SEC
                             done
+                            if [ \$ATTEMPT -gt \$MAX_RETRY ]; then
+                                echo "❌ Rating service test failed after \$MAX_RETRY attempts!"
+                                exit 1
+                            fi
                             
                             echo "✅ All smoke tests passed!"
                         """
@@ -209,5 +218,5 @@ pipeline {
                 }
             }
         }
-    }   // <-- Close the 'stages' block
-}       // <-- Close the 'pipeline' block (THIS WAS MISSING!)
+    }
+}
