@@ -47,3 +47,6 @@ restart_jenkins_and_show_logs.sh
 
 *.py
 *.sh
+Design-Pattern/*
+Design_Pattern/*
+FactoryPatternDemo/*
